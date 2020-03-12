@@ -1,9 +1,10 @@
 use num::Zero;
 use std::str;
 use {Error, Result};
+use std::borrow::Cow;
 
 pub trait AsLasStr {
-    fn as_las_str(&self) -> Result<&str>;
+    fn as_las_str(&self) -> Result<Cow<str>>;
 }
 
 pub trait FromLasStr {
@@ -19,20 +20,15 @@ pub fn some_or_none_if_zero<T: Zero>(n: T) -> Option<T> {
 }
 
 impl<'a> AsLasStr for &'a [u8] {
-    fn as_las_str(&self) -> Result<&str> {
-        let s = if let Some(position) = self.iter().position(|c| *c == 0) {
+    fn as_las_str(&self) -> Result<Cow<str>> {
+        if let Some(position) = self.iter().position(|c| *c == 0) {
             if self[position..].iter().any(|c| *c != 0) {
                 return Err(Error::NotZeroFilled(self.to_vec()));
             } else {
-                str::from_utf8(&self[0..position])?
+                Ok(String::from_utf8_lossy(&self[0..position]))
             }
         } else {
-            str::from_utf8(self)?
-        };
-        if !s.is_ascii() {
-            Err(Error::NotAscii(s.to_string()))
-        } else {
-            Ok(s)
+            Ok(String::from_utf8_lossy(self))
         }
     }
 }
